@@ -15,12 +15,11 @@ import {
 } from "lucide-react";
 
 const Marketplace = () => {
-  const { products, addToCart } = useApp();
+  const { products, addToCart, searchQuery } = useApp();
   const { currentUser } = useAuth();
   const navigate = useNavigate();
   const [selectedCategory, setSelectedCategory] = useState("all");
   const [viewMode, setViewMode] = useState("grid");
-  const [searchQuery, setSearchQuery] = useState("");
 
   // Filter active products only
   const activeProducts = products.filter((p) => p.status === "active");

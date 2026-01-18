@@ -19,10 +19,9 @@ import {
 // Buyer Navbar
 export const BuyerNavbar = () => {
   const { currentUser, logout } = useAuth();
-  const { getCartCount } = useApp();
+  const { getCartCount, searchQuery, setSearchQuery } = useApp();
   const navigate = useNavigate();
   const [showProfileMenu, setShowProfileMenu] = useState(false);
-  const [searchQuery, setSearchQuery] = useState("");
 
   const handleLogout = () => {
     logout();
