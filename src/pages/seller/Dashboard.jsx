@@ -26,9 +26,9 @@ const SellerDashboard = () => {
     expiryDate: "",
     category: "Bakery",
     description: "",
-    image:
-      "https://images.unsplash.com/photo-1555507036-ab1f4038808a?w=400&h=300&fit=crop",
+    image: "",
   });
+  const [imagePreview, setImagePreview] = useState(null);
 
   // Filter products for current seller
   const myProducts = products.filter((p) => p.sellerId === currentUser.id);
@@ -58,8 +58,24 @@ const SellerDashboard = () => {
     };
   }, [myProducts]);
 
+  const handleImageChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setImagePreview(reader.result);
+        setNewProduct({ ...newProduct, image: reader.result });
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
   const handleAddProduct = (e) => {
     e.preventDefault();
+    if (!newProduct.image) {
+      alert("Please upload a product image");
+      return;
+    }
     addProduct({
       ...newProduct,
       originalPrice: parseFloat(newProduct.originalPrice),
@@ -79,9 +95,9 @@ const SellerDashboard = () => {
       expiryDate: "",
       category: "Bakery",
       description: "",
-      image:
-        "https://images.unsplash.com/photo-1555507036-ab1f4038808a?w=400&h=300&fit=crop",
+      image: "",
     });
+    setImagePreview(null);
   };
 
   const getExpiryStatus = (expiryDate) => {
@@ -318,6 +334,58 @@ const SellerDashboard = () => {
               </div>
 
               <form onSubmit={handleAddProduct} className="p-6 space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Product Image
+                  </label>
+                  <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center hover:border-primary-500 transition">
+                    {imagePreview ? (
+                      <div className="space-y-4">
+                        <img
+                          src={imagePreview}
+                          alt="Preview"
+                          className="h-40 w-40 object-cover rounded-lg mx-auto"
+                        />
+                        <input
+                          type="file"
+                          accept="image/*"
+                          onChange={handleImageChange}
+                          className="hidden"
+                          id="image-input"
+                        />
+                        <label
+                          htmlFor="image-input"
+                          className="inline-block bg-primary-600 text-white px-4 py-2 rounded-md cursor-pointer hover:bg-primary-700 transition text-sm font-medium"
+                        >
+                          Change Image
+                        </label>
+                      </div>
+                    ) : (
+                      <div className="space-y-3">
+                        <div className="flex justify-center">
+                          <svg className="h-12 w-12 text-gray-400" stroke="currentColor" fill="none" viewBox="0 0 48 48" aria-hidden="true">
+                            <path d="M28 8H12a4 4 0 00-4 4v20a4 4 0 004 4h24a4 4 0 004-4V20m-2-8h-4m-2-2h-4m2 14l-4-4m-4 4l-4-4m-8 4a2 2 0 11-4 0 2 2 0 014 0z" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                          </svg>
+                        </div>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          onChange={handleImageChange}
+                          className="hidden"
+                          id="image-input"
+                        />
+                        <label
+                          htmlFor="image-input"
+                          className="block text-primary-600 font-medium cursor-pointer hover:text-primary-700 transition"
+                        >
+                          Click to upload image
+                        </label>
+                        <p className="text-sm text-gray-500">PNG, JPG or GIF (Max 5MB)</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Product Name
