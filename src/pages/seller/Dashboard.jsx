@@ -195,7 +195,7 @@ const SellerDashboard = () => {
               className="bg-primary-600 text-white px-4 py-2 border-b-4 border-primary-800 font-medium hover:bg-primary-700 transition flex items-center space-x-2 rounded-md"
             >
               <Plus className="h-5 w-5" />
-              <span>Add Product</span>
+              <span>Add Product...</span>
             </button>
           </div>
 
