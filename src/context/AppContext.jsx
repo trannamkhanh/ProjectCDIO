@@ -91,6 +91,7 @@ export const AppProvider = ({ children }) => {
   const [products, setProducts] = useState(mockProducts);
   const [cart, setCart] = useState([]);
   const [orders, setOrders] = useState(mockOrders);
+  const [searchQuery, setSearchQuery] = useState("");
 
   // Cart Management
   const addToCart = (product, quantity = 1) => {
@@ -252,6 +253,8 @@ export const AppProvider = ({ children }) => {
         verifyUser,
         createOrder,
         getStats,
+        searchQuery,
+        setSearchQuery,
       }}
     >
       {children}
