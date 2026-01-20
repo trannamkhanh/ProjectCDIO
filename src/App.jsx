@@ -14,6 +14,7 @@ import Login from "./pages/Login";
 import Register from "./pages/Register";
 import Marketplace from "./pages/buyer/Marketplace";
 import Cart from "./pages/buyer/Cart";
+import BuyerOrders from "./pages/buyer/Orders";
 import SellerDashboard from "./pages/seller/Dashboard";
 import SellerOrders from "./pages/seller/Orders";
 import AdminDashboard from "./pages/admin/AdminDashboard";
@@ -45,6 +46,14 @@ function App() {
               element={
                 <ProtectedRoute allowedRoles={["buyer"]}>
                   <Cart />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/orders"
+              element={
+                <ProtectedRoute allowedRoles={["buyer"]}>
+                  <BuyerOrders />
                 </ProtectedRoute>
               }
             />
