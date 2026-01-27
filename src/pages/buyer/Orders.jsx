@@ -209,7 +209,7 @@ const Orders = () => {
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <span className="font-medium text-gray-900">
-                            ₱{(order.totalPrice || 0).toFixed(2)}
+                             {(order.totalPrice || 0).toFixed(0)} VND
                           </span>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
