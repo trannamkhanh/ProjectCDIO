@@ -8,28 +8,27 @@ const Login = () => {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+
   const { login, isAuthenticated, currentUser } = useAuth();
   const navigate = useNavigate();
 
+  // Nếu đã login thì auto redirect
   useEffect(() => {
-    // If already authenticated, redirect to appropriate dashboard
     if (isAuthenticated && currentUser) {
-      redirectUser(currentUser);
+      redirectByRole(currentUser.role);
     }
   }, [isAuthenticated, currentUser]);
 
-  const redirectUser = (user) => {
-    switch (user.role) {
+  const redirectByRole = (role) => {
+    switch (role) {
       case "admin":
         navigate("/admin-dashboard", { replace: true });
         break;
       case "seller":
         navigate("/seller-dashboard", { replace: true });
         break;
-      case "buyer":
       default:
         navigate("/marketplace", { replace: true });
-        break;
     }
   };
 
@@ -38,27 +37,27 @@ const Login = () => {
     setError("");
     setLoading(true);
 
-    const result = login(email, password);
+    const result = await login(email, password);
 
-    setTimeout(() => {
-      setLoading(false);
-      if (result.success) {
-        redirectUser(result.user);
-      } else {
-        setError(result.message);
-      }
-    }, 500);
+    setLoading(false);
+
+    if (!result.success) {
+      setError(result.message);
+      return;
+    }
+
+    redirectByRole(result.role);
   };
 
-  const quickLogin = (userEmail, userPassword) => {
-    setEmail(userEmail);
-    setPassword(userPassword);
+  const quickLogin = (email, password) => {
+    setEmail(email);
+    setPassword(password);
   };
 
   return (
     <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
       <div className="max-w-md w-full">
-        {/* Logo & Title */}
+        {/* Logo */}
         <div className="text-center mb-8">
           <div className="flex justify-center mb-4">
             <div className="bg-primary-600 p-3 border-4 border-primary-700 rounded-md">
@@ -71,18 +70,19 @@ const Login = () => {
           <p className="text-gray-600">Sign in to your account</p>
         </div>
 
-        {/* Login Form */}
+        {/* Form */}
         <div className="bg-white border-2 border-gray-200 shadow-md p-8 rounded-lg">
           <form onSubmit={handleSubmit} className="space-y-6">
             {error && (
-              <div className="bg-red-50 border-l-4 border-red-500 p-3 flex items-start space-x-2 rounded-md">
-                <AlertCircle className="h-5 w-5 text-red-600 flex-shrink-0" />
+              <div className="bg-red-50 border-l-4 border-red-500 p-3 flex gap-2 rounded-md">
+                <AlertCircle className="h-5 w-5 text-red-600" />
                 <p className="text-sm text-red-700">{error}</p>
               </div>
             )}
 
+            {/* Email */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium mb-1">
                 Email Address
               </label>
               <div className="relative">
@@ -90,16 +90,17 @@ const Login = () => {
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  placeholder="you@example.com"
                   required
-                  className="w-full px-4 py-2 pl-10 border-2 border-gray-300 focus:outline-none focus:border-primary-600 rounded-md"
+                  className="w-full px-4 py-2 pl-10 border-2 rounded-md focus:border-primary-600 focus:outline-none"
+                  placeholder="you@example.com"
                 />
                 <Mail className="absolute left-3 top-2.5 h-5 w-5 text-gray-400" />
               </div>
             </div>
 
+            {/* Password */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium mb-1">
                 Password
               </label>
               <div className="relative">
@@ -107,9 +108,9 @@ const Login = () => {
                   type="password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  placeholder="••••••••"
                   required
-                  className="w-full px-4 py-2 pl-10 border-2 border-gray-300 focus:outline-none focus:border-primary-600 rounded-md"
+                  className="w-full px-4 py-2 pl-10 border-2 rounded-md focus:border-primary-600 focus:outline-none"
+                  placeholder="••••••••"
                 />
                 <Lock className="absolute left-3 top-2.5 h-5 w-5 text-gray-400" />
               </div>
@@ -118,65 +119,53 @@ const Login = () => {
             <button
               type="submit"
               disabled={loading}
-              className="w-full bg-primary-600 text-white py-2.5 font-semibold hover:bg-primary-700 transition border-b-4 border-primary-800 hover:border-primary-900 disabled:opacity-50 disabled:cursor-not-allowed rounded-md"
+              className="w-full bg-primary-600 text-white py-2.5 font-semibold rounded-md border-b-4 border-primary-800 hover:bg-primary-700 disabled:opacity-50"
             >
               {loading ? "Signing in..." : "Sign In"}
             </button>
           </form>
 
-          {/* Quick Login Options */}
-          <div className="mt-6 pt-6 border-t-2 border-gray-200">
-            <p className="text-sm text-gray-600 mb-3 font-medium">
-              Quick Login for Demo:
-            </p>
+          {/* Quick Login */}
+          <div className="mt-6 pt-6 border-t-2">
+            <p className="text-sm mb-3 font-medium">Quick Login (Demo)</p>
+
             <div className="space-y-2">
               <button
-                onClick={() => quickLogin("buyer@test.com", "123456")}
-                className="w-full px-4 py-2 bg-primary-50 border-2 border-primary-600 text-primary-700 hover:bg-primary-100 transition text-sm font-medium rounded-md"
+                onClick={() => quickLogin("buyer1@cdio.com", "123456")}
+                className="w-full py-2 border-2 rounded-md text-sm hover:bg-gray-100"
               >
                 Login as Buyer
               </button>
+
               <button
-                onClick={() => quickLogin("seller@test.com", "123456")}
-                className="w-full px-4 py-2 bg-accent-50 border-2 border-accent-600 text-accent-700 hover:bg-accent-100 transition text-sm font-medium rounded-md"
+                onClick={() => quickLogin("seller1@cdio.com", "123456")}
+                className="w-full py-2 border-2 rounded-md text-sm hover:bg-gray-100"
               >
                 Login as Seller
               </button>
+
               <button
-                onClick={() => quickLogin("admin@admin.com", "admin")}
-                className="w-full px-4 py-2 bg-gray-50 border-2 border-gray-600 text-gray-700 hover:bg-gray-100 transition text-sm font-medium rounded-md"
+                onClick={() => quickLogin("admin@cdio.com", "123456")}
+                className="w-full py-2 border-2 rounded-md text-sm hover:bg-gray-100"
               >
                 Login as Admin
               </button>
             </div>
           </div>
 
-          <div className="mt-6 text-center">
-            <p className="text-gray-600 text-sm">
-              Don't have an account?{" "}
-              <Link
-                to="/register"
-                className="text-primary-600 hover:text-primary-700 font-semibold border-b-2 border-primary-600 hover:border-primary-700"
-              >
-                Register now
-              </Link>
-            </p>
+          <div className="mt-6 text-center text-sm">
+            Don’t have an account?{" "}
+            <Link to="/register" className="text-primary-600 font-semibold">
+              Register
+            </Link>
           </div>
 
           <div className="mt-4 text-center">
-            <Link
-              to="/"
-              className="text-sm text-gray-600 hover:text-gray-800 border-b border-gray-400 hover:border-gray-800"
-            >
+            <Link to="/" className="text-sm text-gray-600">
               ← Back to Home
             </Link>
           </div>
         </div>
-
-        {/* Footer */}
-        <p className="text-center text-xs text-gray-500 mt-4">
-          By signing in, you agree to our Terms & Privacy Policy
-        </p>
       </div>
     </div>
   );

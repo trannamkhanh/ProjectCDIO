@@ -1,16 +1,17 @@
-import React, { createContext, useContext, useState, useEffect } from "react";
-import { mockUsers, mockProducts, mockOrders } from "../data/mockData";
+import React, { createContext, useContext, useEffect, useState } from "react";
+import { mockProducts, mockOrders } from "../data/mockData";
 
+/* =======================
+   AUTH CONTEXT
+======================= */
 const AuthContext = createContext();
-const AppContext = createContext();
 
-// Auth Provider
 export const AuthProvider = ({ children }) => {
   const [currentUser, setCurrentUser] = useState(null);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
 
+  // Load lại session khi F5
   useEffect(() => {
-    // Check if user is logged in from localStorage
     const storedUser = localStorage.getItem("currentUser");
     if (storedUser) {
       setCurrentUser(JSON.parse(storedUser));
@@ -18,23 +19,39 @@ export const AuthProvider = ({ children }) => {
     }
   }, []);
 
-  const login = (email, password) => {
-    const user = mockUsers.find(
-      (u) => u.email === email && u.password === password,
-    );
-    if (user) {
-      if (!user.active) {
+  // LOGIN (API)
+  const login = async (email, password) => {
+    try {
+      const res = await fetch("http://localhost:3000/api/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password }),
+      });
+
+      const data = await res.json();
+
+      if (!data.success) {
+        return { success: false, message: data.message };
+      }
+
+      if (data.user.status !== "active") {
         return {
           success: false,
-          message: "Your account has been banned. Please contact support.",
+          message: "Tài khoản đã bị khóa",
         };
       }
-      setCurrentUser(user);
+
+      setCurrentUser(data.user);
       setIsAuthenticated(true);
-      localStorage.setItem("currentUser", JSON.stringify(user));
-      return { success: true, user };
+      localStorage.setItem("currentUser", JSON.stringify(data.user));
+
+      return {
+        success: true,
+        role: data.user.role,
+      };
+    } catch (err) {
+      return { success: false, message: "Lỗi server" };
     }
-    return { success: false, message: "Invalid email or password" };
   };
 
   const logout = () => {
@@ -43,146 +60,126 @@ export const AuthProvider = ({ children }) => {
     localStorage.removeItem("currentUser");
   };
 
-  const register = (userData) => {
-    // Check if email already exists
-    const existingUser = mockUsers.find((u) => u.email === userData.email);
-    if (existingUser) {
-      return {
-        success: false,
-        message: "Email already registered",
-      };
-    }
-
-    // Create new user
-    const newUser = {
-      id: mockUsers.length + 1,
-      name: userData.name,
-      email: userData.email,
-      password: userData.password,
-      phone: userData.phone,
-      address: userData.address,
-      role: userData.role,
-      storeName: userData.role === "seller" ? userData.storeName : undefined,
-      active: true,
-      verified: false,
-      createdAt: new Date(),
-    };
-
-    mockUsers.push(newUser);
-    return {
-      success: true,
-      message: "Registration successful",
-      user: newUser,
-    };
-  };
-
   return (
     <AuthContext.Provider
-      value={{ currentUser, isAuthenticated, login, logout, register }}
+      value={{ currentUser, isAuthenticated, login, logout }}
     >
       {children}
     </AuthContext.Provider>
   );
 };
 
-// App Provider
+/* =======================
+   APP CONTEXT
+======================= */
+const AppContext = createContext();
+
 export const AppProvider = ({ children }) => {
-  const [users, setUsers] = useState(mockUsers);
+  const [users, setUsers] = useState([]);
   const [products, setProducts] = useState(mockProducts);
   const [cart, setCart] = useState([]);
   const [orders, setOrders] = useState(mockOrders);
   const [searchQuery, setSearchQuery] = useState("");
 
-  // Cart Management
+  // Load users cho ADMIN
+  useEffect(() => {
+    fetch("http://localhost:3000/api/users")
+      .then((res) => res.json())
+      .then((data) => setUsers(data))
+      .catch((err) => console.error("Load users failed:", err));
+  }, []);
+
+  /* =======================
+     CART
+  ======================= */
   const addToCart = (product, quantity = 1) => {
-    const existingItem = cart.find((item) => item.id === product.id);
-    if (existingItem) {
+    const existing = cart.find((i) => i.id === product.id);
+    if (existing) {
       setCart(
-        cart.map((item) =>
-          item.id === product.id
+        cart.map((i) =>
+          i.id === product.id
             ? {
-                ...item,
+                ...i,
                 cartQuantity: Math.min(
-                  item.cartQuantity + quantity,
-                  product.quantity,
+                  i.cartQuantity + quantity,
+                  product.quantity
                 ),
               }
-            : item,
-        ),
+            : i
+        )
       );
     } else {
       setCart([...cart, { ...product, cartQuantity: quantity }]);
     }
   };
 
-  const removeFromCart = (productId) => {
-    setCart(cart.filter((item) => item.id !== productId));
-  };
+  const removeFromCart = (id) =>
+    setCart(cart.filter((i) => i.id !== id));
 
-  const updateCartQuantity = (productId, quantity) => {
+  const updateCartQuantity = (id, quantity) =>
     setCart(
-      cart.map((item) =>
-        item.id === productId ? { ...item, cartQuantity: quantity } : item,
-      ),
+      cart.map((i) =>
+        i.id === id ? { ...i, cartQuantity: quantity } : i
+      )
     );
-  };
 
-  const clearCart = () => {
-    setCart([]);
-  };
+  const clearCart = () => setCart([]);
 
-  const getCartTotal = () => {
-    return cart.reduce(
-      (total, item) => total + item.rescuePrice * item.cartQuantity,
-      0,
-    );
-  };
+  const getCartTotal = () =>
+    cart.reduce((sum, i) => sum + i.rescuePrice * i.cartQuantity, 0);
 
-  const getCartCount = () => {
-    return cart.reduce((count, item) => count + item.cartQuantity, 0);
-  };
+  const getCartCount = () =>
+    cart.reduce((sum, i) => sum + i.cartQuantity, 0);
 
-  // Product Management (Seller)
+  /* =======================
+     PRODUCT
+  ======================= */
   const addProduct = (product) => {
-    const newProduct = {
-      ...product,
-      id: products.length + 1,
-      status: "active",
-    };
-    setProducts([...products, newProduct]);
+    setProducts([
+      ...products,
+      { ...product, id: products.length + 1, status: "active" },
+    ]);
   };
 
-  const updateProduct = (productId, updates) => {
+  const updateProduct = (id, updates) => {
     setProducts(
-      products.map((p) => (p.id === productId ? { ...p, ...updates } : p)),
+      products.map((p) => (p.id === id ? { ...p, ...updates } : p))
     );
   };
 
-  const deleteProduct = (productId) => {
-    setProducts(products.filter((p) => p.id !== productId));
-    // Also remove from cart if present
-    setCart(cart.filter((item) => item.id !== productId));
+  const deleteProduct = (id) => {
+    setProducts(products.filter((p) => p.id !== id));
+    setCart(cart.filter((c) => c.id !== id));
   };
 
-  // Admin: Remove/Delete Product
-  const deleteProductByAdmin = (productId) => {
-    setProducts(products.filter((p) => p.id !== productId));
-    // Also remove from cart if present
-    setCart(cart.filter((item) => item.id !== productId));
+  // Admin
+  const deleteProductByAdmin = deleteProduct;
+
+  /* =======================
+     USER (ADMIN)
+  ======================= */
+  const deleteUser = async (userId) => {
+    await fetch(`http://localhost:3000/api/users/${userId}`, {
+      method: "DELETE",
+    });
+    setUsers(users.filter((u) => u.account_id !== userId));
   };
 
-  // Admin: User Management
-  const deleteUser = (userId) => {
-    setUsers(users.filter((u) => u.id !== userId));
-  };
+  const blockUser = async (userId) => {
+    await fetch(`http://localhost:3000/api/users/${userId}/block`, {
+      method: "PATCH",
+    });
 
-  const verifyUser = (userId) => {
     setUsers(
-      users.map((u) => (u.id === userId ? { ...u, verified: true } : u)),
+      users.map((u) =>
+        u.account_id === userId ? { ...u, status: "blocked" } : u
+      )
     );
   };
 
-  // Order Management
+  /* =======================
+     ORDER
+  ======================= */
   const createOrder = (orderData) => {
     const newOrder = {
       ...orderData,
@@ -190,9 +187,9 @@ export const AppProvider = ({ children }) => {
       createdAt: new Date(),
       status: "pending",
     };
+
     setOrders([...orders, newOrder]);
 
-    // Update product quantities
     orderData.products.forEach((item) => {
       updateProduct(item.productId, {
         quantity:
@@ -205,32 +202,18 @@ export const AppProvider = ({ children }) => {
     return newOrder;
   };
 
-  // Stats for Admin Dashboard
-  const getStats = () => {
-    const totalUsers = users.filter((u) => u.role !== "admin").length;
-    const totalBuyers = users.filter((u) => u.role === "buyer").length;
-    const totalSellers = users.filter((u) => u.role === "seller").length;
-    const totalProducts = products.length;
-    const activeProducts = products.filter((p) => p.status === "active").length;
-    const totalRevenue = orders.reduce((sum, order) => sum + order.total, 0);
-    const totalOrders = orders.length;
-    const foodRescued = orders.reduce(
-      (sum, order) =>
-        sum + order.products.reduce((pSum, p) => pSum + p.quantity, 0),
-      0,
-    );
-
-    return {
-      totalUsers,
-      totalBuyers,
-      totalSellers,
-      totalProducts,
-      activeProducts,
-      totalRevenue,
-      totalOrders,
-      foodRescued,
-    };
-  };
+  /* =======================
+     ADMIN STATS
+  ======================= */
+  const getStats = () => ({
+    totalUsers: users.filter((u) => u.role !== "admin").length,
+    totalBuyers: users.filter((u) => u.role === "buyer").length,
+    totalSellers: users.filter((u) => u.role === "seller").length,
+    totalProducts: products.length,
+    activeProducts: products.filter((p) => p.status === "active").length,
+    totalRevenue: orders.reduce((s, o) => s + o.total, 0),
+    totalOrders: orders.length,
+  });
 
   return (
     <AppContext.Provider
@@ -239,6 +222,8 @@ export const AppProvider = ({ children }) => {
         products,
         cart,
         orders,
+        searchQuery,
+        setSearchQuery,
         addToCart,
         removeFromCart,
         updateCartQuantity,
@@ -250,11 +235,9 @@ export const AppProvider = ({ children }) => {
         deleteProduct,
         deleteProductByAdmin,
         deleteUser,
-        verifyUser,
+        blockUser,
         createOrder,
         getStats,
-        searchQuery,
-        setSearchQuery,
       }}
     >
       {children}
@@ -262,19 +245,8 @@ export const AppProvider = ({ children }) => {
   );
 };
 
-// Custom Hooks
-export const useAuth = () => {
-  const context = useContext(AuthContext);
-  if (!context) {
-    throw new Error("useAuth must be used within AuthProvider");
-  }
-  return context;
-};
-
-export const useApp = () => {
-  const context = useContext(AppContext);
-  if (!context) {
-    throw new Error("useApp must be used within AppProvider");
-  }
-  return context;
-};
+/* =======================
+   HOOKS
+======================= */
+export const useAuth = () => useContext(AuthContext);
+export const useApp = () => useContext(AppContext);
