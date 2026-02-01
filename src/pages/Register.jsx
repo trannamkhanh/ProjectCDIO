@@ -62,27 +62,42 @@ const Register = () => {
       return;
     }
 
-    const result = register({
-      name: formData.name,
-      email: formData.email,
-      password: formData.password,
-      phone: formData.phone,
-      address: formData.address,
-      role: formData.role,
-      storeName: formData.storeName,
-    });
+    try {
+      const result = await register({
+        name: formData.name,
+        email: formData.email,
+        password: formData.password,
+        phone: formData.phone,
+        address: formData.address,
+        role: formData.role,
+        storeName: formData.storeName,
+      });
 
-    setTimeout(() => {
       setLoading(false);
       if (result.success) {
         setSuccess(true);
         setTimeout(() => {
-          navigate("/login");
+          // Auto redirect to dashboard after successful registration
+          switch (formData.role) {
+            case "admin":
+              navigate("/admin-dashboard");
+              break;
+            case "seller":
+              navigate("/seller-dashboard");
+              break;
+            case "buyer":
+            default:
+              navigate("/marketplace");
+              break;
+          }
         }, 1500);
       } else {
         setError(result.message);
       }
-    }, 500);
+    } catch (error) {
+      setLoading(false);
+      setError("Registration failed. Please try again.");
+    }
   };
 
   return (

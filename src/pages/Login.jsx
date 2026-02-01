@@ -38,16 +38,19 @@ const Login = () => {
     setError("");
     setLoading(true);
 
-    const result = login(email, password);
+    try {
+      const result = await login(email, password);
 
-    setTimeout(() => {
       setLoading(false);
       if (result.success) {
         redirectUser(result.user);
       } else {
         setError(result.message);
       }
-    }, 500);
+    } catch (error) {
+      setLoading(false);
+      setError("Login failed. Please try again.");
+    }
   };
 
   const quickLogin = (userEmail, userPassword) => {

@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from "react";
 import { mockUsers, mockProducts, mockOrders } from "../data/mockData";
+import apiService from "../services/api";
 
 const AuthContext = createContext();
 const AppContext = createContext();
@@ -12,68 +13,65 @@ export const AuthProvider = ({ children }) => {
   useEffect(() => {
     // Check if user is logged in from localStorage
     const storedUser = localStorage.getItem("currentUser");
-    if (storedUser) {
+    const token = localStorage.getItem("token");
+    if (storedUser && token) {
       setCurrentUser(JSON.parse(storedUser));
       setIsAuthenticated(true);
     }
   }, []);
 
-  const login = (email, password) => {
-    const user = mockUsers.find(
-      (u) => u.email === email && u.password === password,
-    );
-    if (user) {
-      if (!user.active) {
-        return {
-          success: false,
-          message: "Your account has been banned. Please contact support.",
-        };
+  const login = async (email, password) => {
+    try {
+      const response = await apiService.login(email, password);
+
+      if (response.success) {
+        setCurrentUser(response.user);
+        setIsAuthenticated(true);
+        localStorage.setItem("currentUser", JSON.stringify(response.user));
+        localStorage.setItem("token", response.token);
+        return { success: true, user: response.user };
       }
-      setCurrentUser(user);
-      setIsAuthenticated(true);
-      localStorage.setItem("currentUser", JSON.stringify(user));
-      return { success: true, user };
+
+      return { success: false, message: response.message };
+    } catch (error) {
+      return {
+        success: false,
+        message: error.message || "Login failed. Please try again.",
+      };
     }
-    return { success: false, message: "Invalid email or password" };
   };
 
   const logout = () => {
     setCurrentUser(null);
     setIsAuthenticated(false);
     localStorage.removeItem("currentUser");
+    localStorage.removeItem("token");
   };
 
-  const register = (userData) => {
-    // Check if email already exists
-    const existingUser = mockUsers.find((u) => u.email === userData.email);
-    if (existingUser) {
+  const register = async (userData) => {
+    try {
+      const response = await apiService.register(userData);
+
+      if (response.success) {
+        // Auto login after registration
+        setCurrentUser(response.user);
+        setIsAuthenticated(true);
+        localStorage.setItem("currentUser", JSON.stringify(response.user));
+        localStorage.setItem("token", response.token);
+        return {
+          success: true,
+          message: "Registration successful",
+          user: response.user,
+        };
+      }
+
+      return { success: false, message: response.message };
+    } catch (error) {
       return {
         success: false,
-        message: "Email already registered",
+        message: error.message || "Registration failed. Please try again.",
       };
     }
-
-    // Create new user
-    const newUser = {
-      id: mockUsers.length + 1,
-      name: userData.name,
-      email: userData.email,
-      password: userData.password,
-      phone: userData.phone,
-      address: userData.address,
-      role: userData.role,
-      storeName: userData.role === "seller" ? userData.storeName : undefined,
-      active: true,
-      verified: false,
-      createdAt: new Date(),
-    };
-
-    mockUsers.push(newUser);
-    return {
-      success: true,
-      message: "Registration successful",
-      user: newUser,
-    };
   };
 
   return (
