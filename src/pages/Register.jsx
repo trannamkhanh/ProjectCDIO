@@ -62,7 +62,7 @@ const Register = () => {
       return;
     }
 
-    const result = register({
+    const result = await register({
       name: formData.name,
       email: formData.email,
       password: formData.password,
@@ -72,17 +72,15 @@ const Register = () => {
       storeName: formData.storeName,
     });
 
-    setTimeout(() => {
-      setLoading(false);
-      if (result.success) {
-        setSuccess(true);
-        setTimeout(() => {
-          navigate("/login");
-        }, 1500);
-      } else {
-        setError(result.message);
-      }
-    }, 500);
+    setLoading(false);
+    if (result.success) {
+      setSuccess(true);
+      setTimeout(() => {
+        navigate("/login");
+      }, 1500);
+    } else {
+      setError(result.message);
+    }
   };
 
   return (
