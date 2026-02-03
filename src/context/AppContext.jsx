@@ -19,6 +19,23 @@ export const AuthProvider = ({ children }) => {
     }
   }, []);
 
+  // REGISTER (API)
+  const register = async (userData) => {
+    try {
+      const res = await fetch("http://localhost:3000/api/auth/register", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(userData),
+      });
+
+      const data = await res.json();
+
+      return data;
+    } catch (err) {
+      return { success: false, message: "Lỗi server" };
+    }
+  };
+
   // LOGIN (API)
   const login = async (email, password) => {
     try {
@@ -62,7 +79,7 @@ export const AuthProvider = ({ children }) => {
 
   return (
     <AuthContext.Provider
-      value={{ currentUser, isAuthenticated, login, logout }}
+      value={{ currentUser, isAuthenticated, register, login, logout }}
     >
       {children}
     </AuthContext.Provider>
@@ -102,25 +119,22 @@ export const AppProvider = ({ children }) => {
                 ...i,
                 cartQuantity: Math.min(
                   i.cartQuantity + quantity,
-                  product.quantity
+                  product.quantity,
                 ),
               }
-            : i
-        )
+            : i,
+        ),
       );
     } else {
       setCart([...cart, { ...product, cartQuantity: quantity }]);
     }
   };
 
-  const removeFromCart = (id) =>
-    setCart(cart.filter((i) => i.id !== id));
+  const removeFromCart = (id) => setCart(cart.filter((i) => i.id !== id));
 
   const updateCartQuantity = (id, quantity) =>
     setCart(
-      cart.map((i) =>
-        i.id === id ? { ...i, cartQuantity: quantity } : i
-      )
+      cart.map((i) => (i.id === id ? { ...i, cartQuantity: quantity } : i)),
     );
 
   const clearCart = () => setCart([]);
@@ -128,23 +142,55 @@ export const AppProvider = ({ children }) => {
   const getCartTotal = () =>
     cart.reduce((sum, i) => sum + i.rescuePrice * i.cartQuantity, 0);
 
-  const getCartCount = () =>
-    cart.reduce((sum, i) => sum + i.cartQuantity, 0);
+  const getCartCount = () => cart.reduce((sum, i) => sum + i.cartQuantity, 0);
 
   /* =======================
      PRODUCT
   ======================= */
-  const addProduct = (product) => {
-    setProducts([
-      ...products,
-      { ...product, id: products.length + 1, status: "active" },
-    ]);
+  const addProduct = async (product) => {
+    try {
+      // Get seller_id from currentUser
+      const sellerId = currentUser?.seller_id || 1; // Default to 1 if not found
+
+      const response = await fetch("http://localhost:3000/api/products", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          sellerId: sellerId,
+          productName: product.name,
+          description: product.description || "",
+          priceOriginal: product.originalPrice,
+          priceDiscount: product.rescuePrice,
+          quantity: product.quantity,
+          expirationDate: product.expiryDate,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        // Add to local state with the returned productId
+        setProducts([
+          ...products,
+          {
+            ...product,
+            id: data.productId,
+            status: "active",
+          },
+        ]);
+        console.log("✅ Product added to database:", data.productId);
+      } else {
+        console.error("❌ Failed to add product:", data.message);
+        alert("Không thể thêm sản phẩm: " + data.message);
+      }
+    } catch (err) {
+      console.error("❌ Error adding product:", err);
+      alert("Lỗi khi thêm sản phẩm");
+    }
   };
 
   const updateProduct = (id, updates) => {
-    setProducts(
-      products.map((p) => (p.id === id ? { ...p, ...updates } : p))
-    );
+    setProducts(products.map((p) => (p.id === id ? { ...p, ...updates } : p)));
   };
 
   const deleteProduct = (id) => {
@@ -172,8 +218,8 @@ export const AppProvider = ({ children }) => {
 
     setUsers(
       users.map((u) =>
-        u.account_id === userId ? { ...u, status: "blocked" } : u
-      )
+        u.account_id === userId ? { ...u, status: "blocked" } : u,
+      ),
     );
   };
 

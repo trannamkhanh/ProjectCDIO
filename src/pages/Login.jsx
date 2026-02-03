@@ -34,10 +34,12 @@ const Login = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    console.log("🔐 Login button clicked!", { email, password });
     setError("");
     setLoading(true);
 
     const result = await login(email, password);
+    console.log("📊 Login result:", result);
 
     setLoading(false);
 
@@ -50,6 +52,7 @@ const Login = () => {
   };
 
   const quickLogin = (email, password) => {
+    console.log("⚡ Quick login:", { email, password });
     setEmail(email);
     setPassword(password);
   };
@@ -100,9 +103,7 @@ const Login = () => {
 
             {/* Password */}
             <div>
-              <label className="block text-sm font-medium mb-1">
-                Password
-              </label>
+              <label className="block text-sm font-medium mb-1">Password</label>
               <div className="relative">
                 <input
                   type="password"
