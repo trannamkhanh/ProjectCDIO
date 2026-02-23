@@ -545,10 +545,23 @@ def add_product():
         conn = get_connection()
         cursor = conn.cursor()
 
-        seller_id = data.get("seller_id")
-        
-        if not seller_id:
-            return jsonify({"error": "seller_id is required"}), 400
+        account_id = data.get("seller_id")  # Thực ra đang là account_id
+
+        if not account_id:
+            return jsonify({"error": "account_id is required"}), 400
+
+        # 🔥 LẤY seller_id TỪ account_id
+        cursor.execute(
+            "SELECT seller_id FROM seller WHERE account_id = ?",
+            (account_id,)
+        )
+
+        seller_row = cursor.fetchone()
+
+        if not seller_row:
+            return jsonify({"error": "Seller not found"}), 400
+
+        seller_id = seller_row.seller_id
 
         product_name = data.get("name")
         price_original = data.get("originalPrice")
@@ -556,7 +569,7 @@ def add_product():
         quantity = data.get("quantity")
         expiration_date = data.get("expiryDate")
         description = data.get("description", "")
-        image_url = data.get("image")  # ✅ Nhận image URL từ frontend
+        image_url = data.get("image")  
 
         if not product_name or price_original is None or quantity is None or not expiration_date:
             return jsonify({"error": "Missing required fields"}), 400
@@ -920,7 +933,29 @@ def get_products_by_seller(accountID):
     except Exception as e:
         return jsonify({"error": str(e)}), 500
     
-    
+@app.post("/api/upload/image")
+def upload_image():
+    try:
+        if "file" not in request.files:
+            return jsonify({"success": False, "error": "No file part"}), 400
+
+        file = request.files["file"]
+
+        if file.filename == "":
+            return jsonify({"success": False, "error": "No selected file"}), 400
+
+        filename = file.filename
+        filepath = os.path.join(UPLOAD_FOLDER, filename)
+
+        file.save(filepath)
+
+        return jsonify({
+            "success": True,
+            "url": f"/static/uploads/{filename}"
+        })
+
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
 
 
 

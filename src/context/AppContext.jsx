@@ -407,6 +407,9 @@ export const AppProvider = ({ children }) => {
         },
         body: JSON.stringify({
           ...productData,
+           expiryDate: productData.expiryDate
+            ? productData.expiryDate.split("T")[0]
+            : null,
           seller_id: currentUser?.account_id  // ← Dùng account_id
         }),
       });
