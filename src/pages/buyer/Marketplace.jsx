@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useApp, useAuth } from "../../context/AppContext";
 import Layout from "../../components/Layout";
 import { formatDistanceToNow } from "date-fns";
+import { formatMoney } from "../../utils/formatMoney";
 import {
   Clock,
   MapPin,
@@ -14,6 +15,8 @@ import {
   List,
 } from "lucide-react";
 
+const API_BASE_URL = "http://localhost:3000";
+
 const Marketplace = () => {
   const { products, addToCart, searchQuery } = useApp();
   const { currentUser } = useAuth();
@@ -21,8 +24,35 @@ const Marketplace = () => {
   const [selectedCategory, setSelectedCategory] = useState("all");
   const [viewMode, setViewMode] = useState("grid");
 
+  // ✅ FIX: Map database fields to component fields
+  const normalizedProducts = useMemo(() => {
+    return products.map(p => ({
+      ...p,
+      id: p.product_id || p.id,
+      name: p.product_name || p.name,
+      category: p.category || 'Other',
+      
+      // ✅ CRITICAL FIX - Backend fields FIRST
+      image: p.image_url
+        ? `${API_BASE_URL}${p.image_url}`
+        : p.image
+        ? `${API_BASE_URL}${p.image}`
+        : null,                          
+      originalPrice: p.price_original || p.originalPrice || 0,  
+      rescuePrice: p.price_discount || p.rescuePrice || 0,      
+      
+      storeName: p.store_name || p.storeName || 'Unknown Store',
+      location: p.seller_location || p.location || 'Unknown Location',
+      quantity: p.quantity || 0,
+      expiryDate: p.expiration_date || p.expiry_date || p.expiryDate,
+      status: p.status
+    }));
+  }, [products]);
+
   // Filter active products only
-  const activeProducts = products.filter((p) => p.status === "active");
+  const activeProducts = normalizedProducts.filter((p) => 
+    p.status === "active" || p.status === "available"
+  );
 
   // Get unique categories
   const categories = ["all", ...new Set(activeProducts.map((p) => p.category))];
@@ -69,10 +99,16 @@ const Marketplace = () => {
     };
   };
 
-  const handleAddToCart = (product) => {
-    addToCart(product, 1);
-    // Show a simple toast or notification (simplified)
-    alert(`${product.name} added to cart!`);
+  // ✅ FIX: Pass product_id instead of entire product object
+  const handleAddToCart = async (product) => {
+    const productId = product.product_id || product.id;
+    const result = await addToCart(productId, 1);
+    
+    if (result.success) {
+      alert(`${product.name} added to cart!`);
+    } else {
+      alert(result.message || 'Failed to add to cart');
+    }
   };
 
   const ProductCard = ({ product }) => {
@@ -87,9 +123,12 @@ const Marketplace = () => {
         {/* Image */}
         <div className="relative h-48 overflow-hidden rounded-lg">
           <img
-            src={product.image}
+            src={product.image || '/placeholder-food.jpg'}
             alt={product.name}
             className="w-full h-full object-cover hover:scale-105 transition-transform duration-300"
+            onError={(e) => {
+              e.target.src = '/placeholder-food.jpg';
+            }}
           />
           <div className="absolute top-2 right-2 bg-accent-500 text-white px-2 py-1 font-bold text-sm rounded-md">
             -{discountPercent}%
@@ -122,10 +161,10 @@ const Marketplace = () => {
           <div className="flex items-baseline justify-between mb-4 border-t-2 border-gray-100 pt-3">
             <div>
               <p className="text-xs text-gray-500 line-through">
-                ${product.originalPrice.toFixed(2)}
+                ${formatMoney(product.originalPrice || 0)}
               </p>
               <p className="text-xl font-bold text-primary-600">
-                ${product.rescuePrice.toFixed(2)}
+                ${formatMoney(product.rescuePrice || 0)}
               </p>
             </div>
             <div className="text-right">
@@ -159,6 +198,24 @@ const Marketplace = () => {
           </h1>
           <p className="text-gray-600 text-sm">Save money and reduce waste</p>
         </div>
+
+        {/* Debug info - remove in production */}
+        {process.env.NODE_ENV === 'development' && (
+          <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded text-sm">
+            <strong>Debug:</strong> Total products: {products.length} | 
+            Active: {activeProducts.length} | 
+            Filtered: {filteredProducts.length}
+            {filteredProducts.length > 0 && (
+              <div className="mt-1 text-xs">
+                First product: {JSON.stringify({
+                  id: filteredProducts[0].id,
+                  name: filteredProducts[0].name,
+                  category: filteredProducts[0].category
+                })}
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Filters */}
         <div className="bg-white border-2 border-gray-200 p-4 mb-6 rounded-lg">
