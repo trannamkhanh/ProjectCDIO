@@ -113,7 +113,7 @@ export const AuthProvider = ({ children }) => {
 /* =======================
    HOOKS (Di chuyển lên trước khi sử dụng)
 ======================= */
-// ✅ FIX: Move hooks definition before AppProvider
+//    FIX: Move hooks definition before AppProvider
 export const useAuth = () => useContext(AuthContext);
 
 /* =======================
@@ -122,15 +122,17 @@ export const useAuth = () => useContext(AuthContext);
 const AppContext = createContext();
 
 export const AppProvider = ({ children }) => {
-  const { currentUser } = useAuth(); // ✅ FIX: Giờ useAuth đã được định nghĩa
+  const { currentUser } = useAuth(); //    FIX: Giờ useAuth đã được định nghĩa
 
   // State
   const [users, setUsers] = useState([]);
   const [products, setProducts] = useState([]);
-  const [sellerProducts, setSellerProducts] = useState([]);
-  const [cart, setCart] = useState([]);
   const [cartId, setCartId] = useState(null);
+  
   const [orders, setOrders] = useState([]);
+  const [sellerProducts, setSellerProducts] = useState([]);
+  const [sellerOrders, setSellerOrders] = useState([]);     
+  const [cart, setCart] = useState([]);
   const [allOrders, setAllOrders] = useState([]);
   const [stats, setStats] = useState(null);
   const [searchQuery, setSearchQuery] = useState("");
@@ -141,7 +143,7 @@ export const AppProvider = ({ children }) => {
     const fetchUsers = async () => {
       try {
         const res = await fetch(`${API_BASE_URL}/api/users`);
-        // ✅ FIX: Thêm error handling
+        //    FIX: Thêm error handling
         if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
         const data = await res.json();
         setUsers(Array.isArray(data) ? data : []);
@@ -158,7 +160,7 @@ export const AppProvider = ({ children }) => {
     const fetchProducts = async () => {
       try {
         const res = await fetch(`${API_BASE_URL}/api/products`);
-        // ✅ FIX: Thêm error handling
+        //    FIX: Thêm error handling
         if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
         const data = await res.json();
         setProducts(Array.isArray(data) ? data : []);
@@ -178,10 +180,10 @@ export const AppProvider = ({ children }) => {
           const res = await fetch(
             `${API_BASE_URL}/api/cart/${currentUser.buyer_id}`
           );
-          // ✅ FIX: Thêm error handling
+          //    FIX: Thêm error handling
           if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
           const data = await res.json();
-          // ✅ FIX: Defensive check cho items array
+          //    FIX: Defensive check cho items array
           setCart(Array.isArray(data.items) ? data.items : []);
           setCartId(data.cart_id || null);
         } catch (err) {
@@ -205,7 +207,7 @@ export const AppProvider = ({ children }) => {
           const res = await fetch(
             `${API_BASE_URL}/api/orders/${currentUser.buyer_id}`
           );
-          // ✅ FIX: Thêm error handling
+          //    FIX: Thêm error handling
           if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
           const data = await res.json();
           setOrders(Array.isArray(data) ? data : []);
@@ -220,12 +222,36 @@ export const AppProvider = ({ children }) => {
     }
   }, [currentUser?.buyer_id]);
 
+  useEffect(() => {
+    if (currentUser?.role === "seller" && currentUser?.account_id) {
+      const fetchSellerOrders = async () => {
+        try {
+          const res = await fetch(
+            `${API_BASE_URL}/api/seller/${currentUser.account_id}/orders`
+          );
+
+          if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
+
+          const data = await res.json();
+          setSellerOrders(Array.isArray(data) ? data : []);
+        } catch (err) {
+          console.error("Failed to load seller orders:", err);
+          setSellerOrders([]);
+        }
+      };
+
+      fetchSellerOrders();
+    } else {
+      setSellerOrders([]);
+    }
+  }, [currentUser]);
+
   // Load all orders (admin)
   useEffect(() => {
     const fetchAllOrders = async () => {
       try {
         const res = await fetch(`${API_BASE_URL}/api/admin/orders`);
-        // ✅ FIX: Thêm error handling
+        //    FIX: Thêm error handling
         if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
         const data = await res.json();
         setAllOrders(Array.isArray(data) ? data : []);
@@ -266,7 +292,7 @@ export const AppProvider = ({ children }) => {
     const fetchStats = async () => {
       try {
         const res = await fetch(`${API_BASE_URL}/api/admin/stats`);
-        // ✅ FIX: Thêm error handling
+        //    FIX: Thêm error handling
         if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
         const data = await res.json();
         setStats(data);
@@ -296,7 +322,7 @@ export const AppProvider = ({ children }) => {
           quantity,
         }),
       });
-      // ✅ FIX: Thêm error handling
+      //    FIX: Thêm error handling
       if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
       const data = await res.json();
 
@@ -328,12 +354,12 @@ export const AppProvider = ({ children }) => {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ cart_id: cartId, product_id: productId }),
       });
-      // ✅ FIX: Thêm error handling
+      //    FIX: Thêm error handling
       if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
       const data = await res.json();
 
       if (data.success) {
-        // ✅ FIX: Defensive check cho cart array
+        //    FIX: Defensive check cho cart array
         setCart(Array.isArray(cart) ? cart.filter((item) => item.product_id !== productId) : []);
       }
 
@@ -355,12 +381,12 @@ export const AppProvider = ({ children }) => {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ cart_id: cartId, product_id: productId, quantity }),
       });
-      // ✅ FIX: Thêm error handling
+      //    FIX: Thêm error handling
       if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
       const data = await res.json();
 
       if (data.success) {
-        // ✅ FIX: Defensive check
+        //    FIX: Defensive check
         setCart(
           Array.isArray(cart) ? cart.map((item) =>
             item.product_id === productId ? { ...item, quantity } : item
@@ -379,13 +405,13 @@ export const AppProvider = ({ children }) => {
     setCart([]);
   };
 
-  // ✅ FIX: Kiểm tra cart là array trước khi reduce
+  //    FIX: Kiểm tra cart là array trước khi reduce
   const getCartTotal = () => {
     if (!Array.isArray(cart)) return 0;
     return cart.reduce((sum, item) => sum + (item.subtotal || item.price * item.quantity), 0);
   };
 
-  // ✅ FIX: Kiểm tra cart là array trước khi reduce
+  //    FIX: Kiểm tra cart là array trước khi reduce
   const getCartCount = () => {
     if (!Array.isArray(cart)) return 0;
     return cart.reduce((sum, item) => sum + item.quantity, 0);
@@ -399,7 +425,6 @@ export const AppProvider = ({ children }) => {
       console.log("DEBUG: currentUser:", currentUser);
       console.log("DEBUG: seller_id to send:", currentUser?.account_id);
       
-      // ✅ FIX: Dùng account_id (có sẵn từ login response)
       const res = await fetch(`${API_BASE_URL}/api/products/add`, {
         method: "POST",
         headers: { 
@@ -410,7 +435,7 @@ export const AppProvider = ({ children }) => {
            expiryDate: productData.expiryDate
             ? productData.expiryDate.split("T")[0]
             : null,
-          seller_id: currentUser?.account_id  // ← Dùng account_id
+          seller_id: currentUser?.account_id 
         }),
       });
       if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
@@ -453,7 +478,7 @@ export const AppProvider = ({ children }) => {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(productData),
       });
-      // ✅ FIX: Thêm error handling
+
       if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
       const data = await res.json();
 
@@ -477,7 +502,7 @@ export const AppProvider = ({ children }) => {
       const res = await fetch(`${API_BASE_URL}/api/products/${productId}`, {
         method: "DELETE",
       });
-      // ✅ FIX: Thêm error handling
+
       if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
       const data = await res.json();
 
@@ -497,7 +522,7 @@ export const AppProvider = ({ children }) => {
   const getProductDetail = async (productId) => {
     try {
       const res = await fetch(`${API_BASE_URL}/api/products/${productId}`);
-      // ✅ FIX: Thêm error handling
+
       if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
       return await res.json();
     } catch (err) {
@@ -511,7 +536,7 @@ export const AppProvider = ({ children }) => {
       const res = await fetch(
         `${API_BASE_URL}/api/products/search?q=${encodeURIComponent(query)}`
       );
-      // ✅ FIX: Thêm error handling
+      //   FIX: Thêm error handling
       if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
       return await res.json();
     } catch (err) {
@@ -528,7 +553,7 @@ export const AppProvider = ({ children }) => {
       const res = await fetch(`${API_BASE_URL}/api/users/${buyerId}`, {
         method: "DELETE",
       });
-      // ✅ FIX: Thêm error handling
+      //    FIX: Thêm error handling
       if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
       const data = await res.json();
 
@@ -548,7 +573,7 @@ export const AppProvider = ({ children }) => {
       const res = await fetch(`${API_BASE_URL}/api/users/${buyerId}/block`, {
         method: "PATCH",
       });
-      // ✅ FIX: Thêm error handling
+      //    FIX: Thêm error handling
       if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
       const data = await res.json();
 
@@ -574,7 +599,7 @@ export const AppProvider = ({ children }) => {
       const res = await fetch(`${API_BASE_URL}/api/users/${buyerId}/verify`, {
         method: "PATCH",
       });
-      // ✅ FIX: Thêm error handling
+      //    FIX: Thêm error handling
       if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
       const data = await res.json();
 
@@ -609,7 +634,7 @@ export const AppProvider = ({ children }) => {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ buyer_id: currentUser.buyer_id }),
       });
-      // ✅ FIX: Thêm error handling
+      //    FIX: Thêm error handling
       if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
       const data = await res.json();
 
@@ -638,7 +663,7 @@ export const AppProvider = ({ children }) => {
   const getOrderDetail = async (orderId) => {
     try {
       const res = await fetch(`${API_BASE_URL}/api/orders/detail/${orderId}`);
-      // ✅ FIX: Thêm error handling
+      //    FIX: Thêm error handling
       if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
       return await res.json();
     } catch (err) {
@@ -657,7 +682,7 @@ export const AppProvider = ({ children }) => {
           body: JSON.stringify({ status }),
         }
       );
-      // ✅ FIX: Thêm error handling
+      //    FIX: Thêm error handling
       if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
       const data = await res.json();
 
@@ -698,7 +723,7 @@ export const AppProvider = ({ children }) => {
   const refreshUsers = async () => {
     try {
       const res = await fetch(`${API_BASE_URL}/api/users`);
-      // ✅ FIX: Thêm error handling
+      //    FIX: Thêm error handling
       if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
       const data = await res.json();
       setUsers(Array.isArray(data) ? data : []);
@@ -710,7 +735,7 @@ export const AppProvider = ({ children }) => {
   const refreshProducts = async () => {
     try {
       const res = await fetch(`${API_BASE_URL}/api/products`);
-      // ✅ FIX: Thêm error handling
+      //    FIX: Thêm error handling
       if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
       const data = await res.json();
       setProducts(Array.isArray(data) ? data : []);
@@ -722,7 +747,7 @@ export const AppProvider = ({ children }) => {
   const refreshStats = async () => {
     try {
       const res = await fetch(`${API_BASE_URL}/api/admin/stats`);
-      // ✅ FIX: Thêm error handling
+      //    FIX: Thêm error handling
       if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
       const data = await res.json();
       setStats(data);
@@ -753,6 +778,7 @@ export const AppProvider = ({ children }) => {
         sellerProducts,
         refreshSellerProducts,
 
+
         // Cart
         cart,
         cartId,
@@ -769,6 +795,7 @@ export const AppProvider = ({ children }) => {
         createOrder,
         getOrderDetail,
         updateOrderStatus,
+        sellerOrders,
 
         // Search
         searchQuery,
