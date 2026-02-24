@@ -12,14 +12,23 @@ import ProtectedRoute from "./components/ProtectedRoute";
 import LandingPage from "./pages/LandingPage";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
+
+// Buyer
 import Marketplace from "./pages/buyer/Marketplace";
 import Cart from "./pages/buyer/Cart";
 import BuyerOrders from "./pages/buyer/Orders";
+
+// Seller
 import SellerDashboard from "./pages/seller/Dashboard";
 import SellerOrders from "./pages/seller/Orders";
+
+// Admin
 import AdminDashboard from "./pages/admin/AdminDashboard";
 import AdminUsers from "./pages/admin/Users";
 import AdminProducts from "./pages/admin/Products";
+
+// Common
+import Forbidden from "./pages/Forbidden"; // 👈 thêm
 
 function App() {
   return (
@@ -27,12 +36,12 @@ function App() {
       <AuthProvider>
         <AppProvider>
           <Routes>
-            {/* Public Routes */}
+            {/* ================= PUBLIC ================= */}
             <Route path="/" element={<LandingPage />} />
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
 
-            {/* Buyer Routes */}
+            {/* ================= BUYER ================= */}
             <Route
               path="/marketplace"
               element={
@@ -41,6 +50,7 @@ function App() {
                 </ProtectedRoute>
               }
             />
+
             <Route
               path="/cart"
               element={
@@ -49,6 +59,7 @@ function App() {
                 </ProtectedRoute>
               }
             />
+
             <Route
               path="/orders"
               element={
@@ -58,7 +69,7 @@ function App() {
               }
             />
 
-            {/* Seller Routes */}
+            {/* ================= SELLER ================= */}
             <Route
               path="/seller-dashboard"
               element={
@@ -67,6 +78,7 @@ function App() {
                 </ProtectedRoute>
               }
             />
+
             <Route
               path="/seller-orders"
               element={
@@ -76,7 +88,7 @@ function App() {
               }
             />
 
-            {/* Admin Routes */}
+            {/* ================= ADMIN ================= */}
             <Route
               path="/admin-dashboard"
               element={
@@ -85,6 +97,7 @@ function App() {
                 </ProtectedRoute>
               }
             />
+
             <Route
               path="/admin-users"
               element={
@@ -93,6 +106,7 @@ function App() {
                 </ProtectedRoute>
               }
             />
+
             <Route
               path="/admin-products"
               element={
@@ -102,7 +116,10 @@ function App() {
               }
             />
 
-            {/* Catch all - redirect to home */}
+            {/* ================= FORBIDDEN ================= */}
+            <Route path="/403" element={<Forbidden />} />
+
+            {/* ================= FALLBACK ================= */}
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </AppProvider>
