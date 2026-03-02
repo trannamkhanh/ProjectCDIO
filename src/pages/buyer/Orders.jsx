@@ -11,31 +11,37 @@ import {
   Eye,
 } from "lucide-react";
 import { formatMoney } from "../../utils/formatMoney";
+import axios from "axios";
 
 const Orders = () => {
   const { orders } = useApp();
+  // Ensure each order has a unique 'id' property for UI and API
+  const normalizedOrders = orders.map(order => ({
+    ...order,
+    id: order.id || order.order_id // prefer 'id', fallback to 'order_id'
+  }));
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [expandedOrder, setExpandedOrder] = useState(null);
 
   const orderStats = useMemo(() => {
     return {
-      total: orders.length,
-      pending: orders.filter((o) => o.status === "pending").length,
-      completed: orders.filter((o) => o.status === "completed").length,
-      cancelled: orders.filter((o) => o.status === "cancelled").length,
+      total: normalizedOrders.length,
+      pending: normalizedOrders.filter((o) => o.status === "pending").length,
+      completed: normalizedOrders.filter((o) => o.status === "completed").length,
+      cancelled: normalizedOrders.filter((o) => o.status === "cancelled").length,
     };
-  }, [orders]);
+  }, [normalizedOrders]);
 
   const filteredOrders = useMemo(() => {
-    return orders.filter((order) => {
+    return normalizedOrders.filter((order) => {
       const matchesSearch =
         String(order.id).includes(searchQuery) ||
         order.seller?.name?.toLowerCase().includes(searchQuery.toLowerCase());
       const matchesStatus = statusFilter === "all" || order.status === statusFilter;
       return matchesSearch && matchesStatus;
     });
-  }, [orders, searchQuery, statusFilter]);
+  }, [normalizedOrders, searchQuery, statusFilter]);
 
   const getStatusIcon = (status) => {
     const icons = {
@@ -50,7 +56,7 @@ const Orders = () => {
     const styles = {
       pending: "bg-yellow-100 text-yellow-800",
       completed: "bg-green-100 text-green-800",
-      cancelled: "bg-red-100 text-red-800",
+      cancelled: "bg-red-100 text-red-800 border border-red-500",
     };
     return (
       <span
@@ -58,9 +64,34 @@ const Orders = () => {
           styles[status] || "bg-gray-100 text-gray-800"
         }`}
       >
-        {status?.charAt(0).toUpperCase() + status?.slice(1) || "Unknown"}
+        {status === 'cancelled' ? (
+          <span className="text-red-700 font-bold">Cancelled</span>
+        ) : (
+          status?.charAt(0).toUpperCase() + status?.slice(1) || "Unknown"
+        )}
       </span>
     );
+  };
+
+  const handleCancelOrder = async (orderId) => {
+    if (!window.confirm("Bạn có chắc muốn hủy đơn hàng này?")) return;
+    try {
+      const res = await axios.patch(`/api/buyer/orders/${orderId}/cancel`);
+      if (res.data && res.data.success) {
+        alert("Đã hủy đơn hàng thành công!");
+        if (typeof setOrders === "function") {
+          setOrders((prev) =>
+            prev.map((o) =>
+              o.id === orderId ? { ...o, status: "cancelled" } : o
+            )
+          );
+        }
+      } else {
+        alert(res.data?.error || "Hủy đơn hàng thất bại!");
+      }
+    } catch (err) {
+      alert("Hủy đơn hàng thất bại!");
+    }
   };
 
   return (
@@ -272,6 +303,17 @@ const Orders = () => {
                           ${formatMoney(order.total || 0)}
                         </span>
                       </div>
+                    </div>
+
+                    <div className="flex gap-2 mt-6">
+                      {order.status === "pending" && (
+                        <button
+                          className="bg-red-600 text-white px-4 py-2 rounded-md font-semibold hover:bg-red-700 transition"
+                          onClick={() => handleCancelOrder(order.id)}
+                        >
+                          Cancel Order
+                        </button>
+                      )}
                     </div>
                   </div>
                 )}
