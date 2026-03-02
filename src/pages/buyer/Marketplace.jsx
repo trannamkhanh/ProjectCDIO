@@ -161,10 +161,10 @@ const Marketplace = () => {
           <div className="flex items-baseline justify-between mb-4 border-t-2 border-gray-100 pt-3">
             <div>
               <p className="text-xs text-gray-500 line-through">
-                ${formatMoney(product.originalPrice || 0)}
+                {formatMoney(product.originalPrice || 0)}
               </p>
               <p className="text-xl font-bold text-primary-600">
-                ${formatMoney(product.rescuePrice || 0)}
+                {formatMoney(product.rescuePrice || 0)}
               </p>
             </div>
             <div className="text-right">

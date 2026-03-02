@@ -18,15 +18,17 @@ import { formatMoney } from "../../utils/formatMoney";
 const API_BASE_URL = "http://localhost:3000";
 
 const SellerDashboard = () => {
-  const { 
-    sellerProducts, 
-    addProduct, 
-    deleteProduct, 
-    refreshSellerProducts 
+  const {
+    sellerProducts,
+    addProduct,
+    deleteProduct,
+    refreshSellerProducts
   } = useApp();
   const { currentUser } = useAuth();
   const [showAddModal, setShowAddModal] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [editingProduct, setEditingProduct] = useState(null);
+  const [updating, setUpdating] = useState(false);
   const [newProduct, setNewProduct] = useState({
     name: "",
     originalPrice: "",
@@ -40,7 +42,6 @@ const SellerDashboard = () => {
   const [imagePreview, setImagePreview] = useState(null);
   const [selectedFile, setSelectedFile] = useState(null);
 
-  // ✅ Normalize products để map backend fields
   const myProducts = useMemo(() => {
     return sellerProducts.map(p => ({
       ...p,
@@ -58,14 +59,13 @@ const SellerDashboard = () => {
     }));
   }, [sellerProducts]);
 
-  
 
   console.log('🏪 Seller Dashboard:', {
     currentUser: currentUser?.account_id,
     totalProducts: myProducts.length,
     myProducts: myProducts.length,
     firstMyProduct: myProducts[0]
-    
+
   });
 
   // Calculate stats
@@ -150,7 +150,7 @@ const SellerDashboard = () => {
   // ✅ FIXED: Upload image first, then add product
   const handleAddProduct = async (e) => {
     e.preventDefault();
-    
+
     if (!selectedFile) {
       alert("Please upload a product image");
       return;
@@ -180,7 +180,7 @@ const SellerDashboard = () => {
       if (result.success) {
         alert('✅ Product added successfully!');
         setShowAddModal(false);
-        
+
         // Reset form
         setNewProduct({
           name: "",
@@ -216,29 +216,73 @@ const SellerDashboard = () => {
     const hoursLeft = Math.floor(
       (new Date(expiryDate) - new Date()) / (1000 * 60 * 60),
     );
-    
+
     if (hoursLeft < 0)
       return { status: "expired", color: "bg-gray-100 text-gray-600" };
     if (hoursLeft < 6)
       return { status: `${hoursLeft}h`, color: "bg-red-100 text-red-700" };
     if (hoursLeft < 24)
       return { status: `${hoursLeft}h`, color: "bg-orange-100 text-orange-700" };
-    
+
     const daysLeft = Math.floor(hoursLeft / 24);
     return { status: `${daysLeft}d`, color: "bg-yellow-100 text-yellow-700" };
   };
 
   const handleDeleteProduct = async (productId) => {
-    if (window.confirm('Are you sure you want to delete this product?')) {
+    if (!window.confirm("Are you sure you want to delete this product?")) return;
+    try {
       const result = await deleteProduct(productId);
-      if (result.success) {
-        alert('✅ Product deleted');
+      if (result && result.success) {
+        alert("✅ Product deleted successfully!");
         await refreshSellerProducts();
       } else {
-        alert('❌ Failed to delete product');
+        const errorMsg = result?.message || "Failed to delete product";
+        alert(`❌ ${errorMsg}`);
       }
+    } catch (error) {
+      console.error("❌ Delete error:", error);
+      alert(`❌ Error deleting product: ${error.message || "Unknown error"}`);
     }
   };
+
+  const handleUpdateProduct = async (e) => {
+    e.preventDefault();
+    setUpdating(true);
+
+    try {
+      const response = await fetch(
+        `${API_BASE_URL}/api/products/${editingProduct.id}`,
+        {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            product_name: editingProduct.name,
+            description: editingProduct.description,
+            price_original: parseFloat(editingProduct.originalPrice),
+            price_discount: parseFloat(editingProduct.rescuePrice),
+            quantity: parseInt(editingProduct.quantity),
+            expiration_date: editingProduct.expiryDate,
+          }),
+        }
+      );
+
+      const result = await response.json();
+
+      if (result.success) {
+        alert("✅ Product updated successfully!");
+        setEditingProduct(null);
+        await refreshSellerProducts();
+      } else {
+        alert("❌ " + (result.error || "Update failed"));
+      }
+    } catch (error) {
+      alert("❌ Error: " + error.message);
+    } finally {
+      setUpdating(false);
+    }
+  };
+
+
 
   return (
     <Layout type="seller">
@@ -289,7 +333,7 @@ const SellerDashboard = () => {
               <span className="text-sm text-gray-500">Value</span>
             </div>
             <p className="text-3xl font-bold text-gray-900">
-              ${formatMoney(stats.totalInventoryValue)}
+              {formatMoney(stats.totalInventoryValue)}
             </p>
             <p className="text-sm text-gray-600 mt-1">Inventory Value</p>
           </div>
@@ -388,11 +432,11 @@ const SellerDashboard = () => {
                         <div className="text-sm">
                           {product.originalPrice > 0 && (
                             <p className="text-gray-500 line-through">
-                              ${formatMoney(product.originalPrice)}
+                              {formatMoney(product.originalPrice)}
                             </p>
                           )}
                           <p className="text-primary-600 font-semibold">
-                            ${formatMoney(product.rescuePrice)}
+                            {formatMoney(product.rescuePrice)}
                           </p>
                         </div>
                       </td>
@@ -403,15 +447,27 @@ const SellerDashboard = () => {
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <span
-                          className={`px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                            getExpiryStatus(product.expiryDate).color
-                          }`}
+                          className={`px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${getExpiryStatus(product.expiryDate).color
+                            }`}
                         >
                           {getExpiryStatus(product.expiryDate).status}
                         </span>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm space-x-2">
-                        <button className="text-primary-600 hover:text-primary-800 font-medium transition">
+                        <button
+                          onClick={() =>
+                            setEditingProduct({
+                              ...product,
+                              originalPrice: product.originalPrice || "",
+                              rescuePrice: product.rescuePrice || "",
+                              quantity: product.quantity || "",
+                              expiryDate: product.expiryDate
+                                ? new Date(product.expiryDate).toISOString().slice(0, 16)
+                                : "",
+                            })
+                          }
+                          className="text-primary-600 hover:text-primary-800 font-medium transition"
+                        >
                           <Edit2 className="h-4 w-4 inline" />
                         </button>
                         <button
@@ -470,11 +526,10 @@ const SellerDashboard = () => {
                         />
                         <label
                           htmlFor="image-input"
-                          className={`inline-block px-4 py-2 rounded-md cursor-pointer transition text-sm font-medium ${
-                            uploading
-                              ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                              : 'bg-primary-600 text-white hover:bg-primary-700'
-                          }`}
+                          className={`inline-block px-4 py-2 rounded-md cursor-pointer transition text-sm font-medium ${uploading
+                            ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                            : 'bg-primary-600 text-white hover:bg-primary-700'
+                            }`}
                         >
                           {uploading ? 'Uploading...' : 'Change Image'}
                         </label>
@@ -664,6 +719,159 @@ const SellerDashboard = () => {
                     disabled={uploading}
                   >
                     {uploading ? '⏳ Adding...' : 'Add Product'}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
+        {/* Edit Product Modal */}
+        {editingProduct && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+            <div className="bg-white rounded-lg max-w-2xl w-full">
+              <div className="flex justify-between items-center p-6 border-b">
+                <h3 className="text-lg font-semibold">
+                  Edit Product
+                </h3>
+                <button
+                  onClick={() => setEditingProduct(null)}
+                  className="text-gray-500 hover:text-gray-700"
+                >
+                  <X className="h-6 w-6" />
+                </button>
+              </div>
+
+              <form onSubmit={handleUpdateProduct} className="p-6 space-y-4">
+
+                {/* Name */}
+                <div>
+                  <label className="block text-sm font-medium mb-2">
+                    Product Name
+                  </label>
+                  <input
+                    type="text"
+                    value={editingProduct.name}
+                    onChange={(e) =>
+                      setEditingProduct({
+                        ...editingProduct,
+                        name: e.target.value,
+                      })
+                    }
+                    className="w-full px-4 py-2 border rounded-lg"
+                    required
+                  />
+                </div>
+
+                {/* Prices */}
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium mb-2">
+                      Original Price
+                    </label>
+                    <input
+                      type="number"
+                      value={editingProduct.originalPrice}
+                      onChange={(e) =>
+                        setEditingProduct({
+                          ...editingProduct,
+                          originalPrice: e.target.value,
+                        })
+                      }
+                      className="w-full px-4 py-2 border rounded-lg"
+                      required
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium mb-2">
+                      Rescue Price
+                    </label>
+                    <input
+                      type="number"
+                      value={editingProduct.rescuePrice}
+                      onChange={(e) =>
+                        setEditingProduct({
+                          ...editingProduct,
+                          rescuePrice: e.target.value,
+                        })
+                      }
+                      className="w-full px-4 py-2 border rounded-lg"
+                      required
+                    />
+                  </div>
+                </div>
+
+                {/* Quantity */}
+                <div>
+                  <label className="block text-sm font-medium mb-2">
+                    Quantity
+                  </label>
+                  <input
+                    type="number"
+                    value={editingProduct.quantity}
+                    onChange={(e) =>
+                      setEditingProduct({
+                        ...editingProduct,
+                        quantity: e.target.value,
+                      })
+                    }
+                    className="w-full px-4 py-2 border rounded-lg"
+                    required
+                  />
+                </div>
+
+                {/* Expiry Date */}
+                <div>
+                  <label className="block text-sm font-medium mb-2">
+                    Expiry Date
+                  </label>
+                  <input
+                    type="datetime-local"
+                    value={editingProduct.expiryDate}
+                    onChange={(e) =>
+                      setEditingProduct({
+                        ...editingProduct,
+                        expiryDate: e.target.value,
+                      })
+                    }
+                    className="w-full px-4 py-2 border rounded-lg"
+                    required
+                  />
+                </div>
+
+                {/* Description */}
+                <div>
+                  <label className="block text-sm font-medium mb-2">
+                    Description
+                  </label>
+                  <textarea
+                    value={editingProduct.description || ""}
+                    onChange={(e) =>
+                      setEditingProduct({
+                        ...editingProduct,
+                        description: e.target.value,
+                      })
+                    }
+                    className="w-full px-4 py-2 border rounded-lg"
+                  />
+                </div>
+
+                {/* Buttons */}
+                <div className="flex space-x-4 pt-4">
+                  <button
+                    type="button"
+                    onClick={() => setEditingProduct(null)}
+                    className="flex-1 bg-gray-200 py-2 rounded-md"
+                  >
+                    Cancel
+                  </button>
+
+                  <button
+                    type="submit"
+                    disabled={updating}
+                    className="flex-1 bg-primary-600 text-white py-2 rounded-md"
+                  >
+                    {updating ? "Updating..." : "Update Product"}
                   </button>
                 </div>
               </form>

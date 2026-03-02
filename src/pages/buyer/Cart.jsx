@@ -274,7 +274,7 @@ const Cart = () => {
                     </p>
                     {/* ✅ FIX: Dùng formatMoney */}
                     <p className="text-xl font-bold text-primary-600">
-                      ${formatMoney(item.price || 0)}
+                      {formatMoney(item.price || 0)}
                     </p>
                   </div>
                   <button
@@ -340,7 +340,7 @@ const Cart = () => {
                   <span className="font-bold text-gray-900">Total</span>
                   {/* ✅ FIX: Dùng formatMoney */}
                   <span className="text-xl font-bold text-primary-600">
-                    ${formatMoney(getCartTotal())}
+                    {formatMoney(getCartTotal())}
                   </span>
                 </div>
               </div>

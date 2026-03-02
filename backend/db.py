@@ -1,12 +1,12 @@
 import pyodbc
-
 def get_connection():
-    conn = pyodbc.connect(
-        "DRIVER={ODBC Driver 17 for SQL Server};"
-        "SERVER=localhost\\SQLEXPRESS;"
+    return pyodbc.connect(
+        "DRIVER={ODBC Driver 18 for SQL Server};"
+        "SERVER=KarlK;"
         "DATABASE=CDIO;"
-        "UID=cdio_user;"
-        "PWD=123456;"
+        "UID=TranQuangSang;"
+        "PWD=123qwe;"
+        "Encrypt=yes;"
         "TrustServerCertificate=yes;"
+        "Connection Timeout=5;"
     )
-    return conn
