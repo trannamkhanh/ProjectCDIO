@@ -956,6 +956,81 @@ def upload_image():
 
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 500
+    
+# =========================
+# SELLER: GET ORDERS
+# =========================
+@app.get("/api/seller/<int:accountId>/orders")
+def get_seller_orders(accountId):
+    try:
+        conn = get_connection()
+        cursor = conn.cursor()
+
+        cursor.execute("""
+            SELECT DISTINCT
+                o.order_id,
+                o.buyer_id,
+                o.total_amount,
+                o.order_status,
+                o.created_at,
+                b.full_name as buyer_name,
+                a.email as buyer_email,
+                a.phone as buyer_phone,
+                b.address as buyer_address
+            FROM orders o
+            JOIN order_item oi ON o.order_id = oi.order_id
+            JOIN product p ON oi.product_id = p.product_id
+            JOIN seller s ON p.seller_id = s.seller_id
+            LEFT JOIN buyer b ON o.buyer_id = b.buyer_id
+            LEFT JOIN account a ON b.account_id = a.account_id
+            WHERE s.account_id = ?
+            ORDER BY o.created_at DESC
+        """, (accountId,))   # ✅ ĐÚNG BIẾN
+
+        orders = []
+        for row in cursor.fetchall():
+            order_id = row.order_id
+
+            cursor.execute("""
+                SELECT 
+                    p.product_name,
+                    oi.quantity,
+                    oi.price
+                FROM order_item oi
+                JOIN product p ON oi.product_id = p.product_id
+                JOIN seller s ON p.seller_id = s.seller_id
+                WHERE oi.order_id = ? AND s.account_id = ?
+            """, (order_id, accountId))  # ✅ ĐÚNG BIẾN
+
+            items = cursor.fetchall()
+
+            orders.append({
+                "order_id": order_id,
+                "buyer_id": row.buyer_id,
+                "total": float(row.total_amount),
+                "status": row.order_status,
+                "created_at": str(row.created_at),
+                "customer": {
+                    "name": row.buyer_name,
+                    "email": row.buyer_email,
+                    "phone": row.buyer_phone,
+                    "address": row.buyer_address
+                },
+                "products": [
+                    {
+                        "productName": item.product_name,
+                        "quantity": item.quantity,
+                        "price": float(item.price)
+                    }
+                    for item in items
+                ]
+            })
+
+        return jsonify(orders)
+
+    except Exception as e:
+        print(f"ERROR: {str(e)}")
+        return jsonify({"error": str(e)}), 500
 
 
 

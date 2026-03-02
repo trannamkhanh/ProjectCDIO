@@ -18,15 +18,16 @@ import { format } from "date-fns";
 import { formatMoney, formatTotal } from "../../utils/formatMoney";
 
 const SellerOrders = () => {
-  const { orders } = useApp();
+
+  const { sellerOrders } = useApp();
   const [expandedOrder, setExpandedOrder] = useState(null);
   const [statusFilter, setStatusFilter] = useState("all");
 
   // Filter orders
   const filteredOrders = useMemo(() => {
-    if (statusFilter === "all") return orders;
-    return orders.filter((o) => o.status === statusFilter);
-  }, [orders, statusFilter]);
+    if (statusFilter === "all") return sellerOrders;
+    return sellerOrders.filter((o) => o.status === statusFilter);
+  }, [sellerOrders, statusFilter]);
 
   const getStatusIcon = (status) => {
     const icons = {
@@ -104,14 +105,14 @@ const SellerOrders = () => {
           ) : (
             filteredOrders.map((order) => (
               <div
-                key={order.id}
+                key={order.order_id}
                 className="bg-white border-2 border-gray-200 shadow-md rounded-lg overflow-hidden hover:shadow-lg transition"
               >
                 {/* Order Header */}
                 <button
                   onClick={() =>
                     setExpandedOrder(
-                      expandedOrder === order.id ? null : order.id,
+                      expandedOrder === order.order_id ? null : order.order_id,
                     )
                   }
                   className="w-full px-6 py-4 flex items-center justify-between hover:bg-gray-50 transition"
@@ -121,7 +122,7 @@ const SellerOrders = () => {
                     <div>
                       <div className="flex items-center space-x-3 mb-2">
                         <h3 className="text-lg font-bold text-gray-900">
-                          Order #{order.id}
+                          Order #{order.order_id}
                         </h3>
                         {getStatusBadge(order.status)}
                       </div>
@@ -129,15 +130,13 @@ const SellerOrders = () => {
                         <div className="flex items-center space-x-1">
                           <Calendar className="h-4 w-4" />
                           <span>
-                            {format(
-                              new Date(order.createdAt),
-                              "MMM dd, yyyy HH:mm",
-                            )}
+                            {order.created_at
+                              ? format(new Date(order.created_at), "MMM dd, yyyy HH:mm")
+                              : "N/A"}
                           </span>
                         </div>
                         <div className="flex items-center space-x-1">
                           <DollarSign className="h-4 w-4" />
-                          {/* ✅ FIX: Dùng formatMoney */}
                           <span className="font-semibold">
                             ${formatMoney(order.total || 0)}
                           </span>
@@ -147,15 +146,13 @@ const SellerOrders = () => {
                   </div>
                   <ChevronDown
                     className={`h-5 w-5 text-gray-400 transition ${
-                      expandedOrder === order.id ? "rotate-180" : ""
+                      expandedOrder === order.order_id ? "rotate-180" : ""
                     }`}
                   />
                 </button>
 
-                {/* Order Details */}
-                {expandedOrder === order.id && (
+                {expandedOrder === order.order_id && (
                   <div className="border-t border-gray-200 p-6 space-y-6">
-                    {/* Customer Info */}
                     <div>
                       <h4 className="font-semibold text-gray-900 mb-3">
                         Customer Information
@@ -195,7 +192,6 @@ const SellerOrders = () => {
                                 x{item.quantity}
                               </span>
                             </div>
-                            {/* ✅ FIX: Dùng formatTotal */}
                             <span className="font-semibold text-gray-900">
                               ${formatTotal(item.price, item.quantity)}
                             </span>
@@ -204,7 +200,6 @@ const SellerOrders = () => {
                       </div>
                       <div className="flex justify-between items-center mt-3 pt-3 border-t border-gray-300">
                         <span className="font-bold text-gray-900">Total</span>
-                        {/* ✅ FIX: Dùng formatMoney */}
                         <span className="text-xl font-bold text-primary-600">
                           ${formatMoney(order.total || 0)}
                         </span>
