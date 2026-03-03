@@ -1,6 +1,7 @@
 from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
 from db import get_connection
+from datetime  import datetime
 import os
 
 # ✅ Config static folder
@@ -598,10 +599,9 @@ def delete_product(productId):
         cursor = conn.cursor()
 
         cursor.execute("""
-            UPDATE product
-            SET status = 'deleted'
+            DELETE FROM product
             WHERE product_id = ?
-        """, productId)
+        """, (productId,))
 
         conn.commit()
         return jsonify({"success": True})
@@ -712,26 +712,43 @@ def update_product(productId):
         conn = get_connection()
         cursor = conn.cursor()
 
+        # 🔥 FIX expiration date conversion
+        expiration_date_str = data.get("expiration_date")
+
+        expiration_date = None
+        if expiration_date_str:
+            # Remove Z if exists and convert ISO format
+            expiration_date = datetime.fromisoformat(
+                expiration_date_str.replace("Z", "")
+            ).date()
+
         cursor.execute("""
             UPDATE product
-            SET product_name=?, description=?, price_original=?,
-                price_discount=?, quantity=?, expiration_date=?
+            SET product_name=?,
+                description=?,
+                price_original=?,
+                price_discount=?,
+                quantity=?,
+                expiration_date=?
             WHERE product_id=?
         """,
-        data["product_name"],
-        data["description"],
-        data["price_original"],
-        data.get("price_discount"),
-        data["quantity"],
-        data["expiration_date"],
-        productId)
+        (
+            data["product_name"],
+            data["description"],
+            data["price_original"],
+            data.get("price_discount"),
+            data["quantity"],
+            expiration_date,
+            productId
+        ))
 
         conn.commit()
+
         return jsonify({"success": True})
 
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
-
+        return jsonify({"success": False, "error": str(e)}), 500
+    
 @app.get("/api/products/search")
 def search_products():
     keyword = request.args.get("q", "")
