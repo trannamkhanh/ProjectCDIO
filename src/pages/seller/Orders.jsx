@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from "react";
+import axios from "axios";
 import { useApp } from "../../context/AppContext";
 import Layout from "../../components/Layout";
 import {
@@ -19,9 +20,33 @@ import { formatMoney, formatTotal } from "../../utils/formatMoney";
 
 const SellerOrders = () => {
 
-  const { sellerOrders } = useApp();
+  const { sellerOrders, setSellerOrders } = useApp ? useApp() : { sellerOrders: [], setSellerOrders: () => {} };
   const [expandedOrder, setExpandedOrder] = useState(null);
   const [statusFilter, setStatusFilter] = useState("all");
+  const [loadingOrderId, setLoadingOrderId] = useState(null);
+  // Confirm order handler
+  const handleConfirmOrder = async (orderId) => {
+    setLoadingOrderId(orderId);
+    try {
+      const res = await axios.patch(`/api/seller/orders/${orderId}/confirm`);
+      if (res.data && res.data.success) {
+        // Cập nhật trạng thái đơn hàng trong state
+        if (setSellerOrders) {
+          setSellerOrders((prev) =>
+            prev.map((o) =>
+              o.order_id === orderId ? { ...o, status: "completed" } : o
+            )
+          );
+        }
+        setStatusFilter("confirmed");
+        alert("Xác nhận thành công");
+      }
+    } catch (err) {
+      alert("Xác nhận đơn hàng thất bại!");
+    } finally {
+      setLoadingOrderId(null);
+    }
+  };
 
   // Filter orders
   const filteredOrders = useMemo(() => {
@@ -33,6 +58,7 @@ const SellerOrders = () => {
     const icons = {
       pending: <Clock className="h-6 w-6 text-yellow-500" />,
       confirmed: <CheckCircle className="h-6 w-6 text-blue-500" />,
+      completed: <CheckCircle className="h-6 w-6 text-green-500" />,
       shipped: <Truck className="h-6 w-6 text-purple-500" />,
       delivered: <CheckCircle className="h-6 w-6 text-green-500" />,
       cancelled: <XCircle className="h-6 w-6 text-red-500" />,
@@ -44,15 +70,24 @@ const SellerOrders = () => {
     const badges = {
       pending: "bg-yellow-100 text-yellow-800",
       confirmed: "bg-blue-100 text-blue-800",
+      completed: "bg-green-100 text-green-800",
       shipped: "bg-purple-100 text-purple-800",
       delivered: "bg-green-100 text-green-800",
       cancelled: "bg-red-100 text-red-800",
+    };
+    const labelMap = {
+      pending: "Pending",
+      confirmed: "Completed",
+      completed: "Completed",
+      shipped: "Shipped",
+      delivered: "Delivered",
+      cancelled: "Cancelled",
     };
     return (
       <span
         className={`px-3 py-1 rounded-full text-sm font-semibold ${badges[status] || "bg-gray-100 text-gray-800"}`}
       >
-        {status.charAt(0).toUpperCase() + status.slice(1)}
+        {labelMap[status] || status.charAt(0).toUpperCase() + status.slice(1)}
       </span>
     );
   };
@@ -72,7 +107,7 @@ const SellerOrders = () => {
 
         {/* Status Filter */}
         <div className="mb-6 flex gap-2">
-          {["all", "pending", "confirmed", "shipped", "delivered", "cancelled"].map(
+          {["all", "pending", "completed", "shipped", "delivered", "cancelled"].map(
             (status) => (
               <button
                 key={status}
@@ -208,9 +243,15 @@ const SellerOrders = () => {
 
                     {/* Actions */}
                     <div className="flex gap-2 pt-4">
-                      <button className="flex-1 bg-primary-600 text-white py-2.5 border-b-4 border-primary-800 font-semibold hover:bg-primary-700 transition rounded-md">
-                        Update Status
-                      </button>
+                      {order.status === "pending" ? (
+                        <button
+                          className="flex-1 bg-primary-600 text-white py-2.5 border-b-4 border-primary-800 font-semibold hover:bg-primary-700 transition rounded-md disabled:opacity-60"
+                          onClick={() => handleConfirmOrder(order.order_id)}
+                          disabled={loadingOrderId === order.order_id}
+                        >
+                          {loadingOrderId === order.order_id ? "Đang xác nhận..." : "Confirm Order"}
+                        </button>
+                      ) : null}
                       <button className="flex-1 bg-gray-100 text-gray-700 py-2.5 border-2 border-gray-300 font-semibold hover:bg-gray-200 transition rounded-md">
                         Contact Customer
                       </button>

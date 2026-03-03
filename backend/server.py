@@ -805,55 +805,7 @@ def order_detail(orderId):
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
-@app.get("/api/admin/orders")
-def admin_orders():
-    try:
-        conn = get_connection()
-        cursor = conn.cursor()
 
-        cursor.execute("""
-            SELECT order_id, buyer_id, total_amount, order_status, created_at
-            FROM orders
-            ORDER BY created_at DESC
-        """)
-
-        rows = cursor.fetchall()
-
-        return jsonify([
-            {
-                "order_id": o.order_id,
-                "buyer_id": o.buyer_id,
-                "total": float(o.total_amount),
-                "status": o.order_status,
-                "created_at": str(o.created_at)
-            }
-            for o in rows
-        ])
-
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
-
-
-@app.patch("/api/admin/orders/<int:orderId>/status")
-def update_order_status(orderId):
-    data = request.json
-    new_status = data.get("status")
-
-    try:
-        conn = get_connection()
-        cursor = conn.cursor()
-
-        cursor.execute("""
-            UPDATE orders
-            SET order_status=?
-            WHERE order_id=?
-        """, new_status, orderId)
-
-        conn.commit()
-        return jsonify({"success": True})
-
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
 
 
 @app.get("/api/admin/products")
@@ -1032,7 +984,62 @@ def get_seller_orders(accountId):
         print(f"ERROR: {str(e)}")
         return jsonify({"error": str(e)}), 500
 
+# =========================
+# SELLER: CONFIRM ORDER
+# =========================
+@app.patch("/api/seller/orders/<int:orderId>/confirm")
+def seller_confirm_order(orderId):
+    try:
+        conn = get_connection()
+        cursor = conn.cursor()
 
+        cursor.execute("SELECT order_id FROM orders WHERE order_id=?", (orderId,))
+        order = cursor.fetchone()
+        if not order:
+            return jsonify({"error": "Order not found"}), 404
+
+        cursor.execute("""
+            UPDATE orders
+            SET order_status = 'completed'
+            WHERE order_id = ?
+        """, (orderId,))
+        conn.commit()
+        return jsonify({"success": True, "order_id": orderId, "status": "completed"})
+    except Exception as e:
+        import traceback
+        print("[SELLER CONFIRM ORDER ERROR]", str(e))
+        traceback.print_exc()
+        return jsonify({"error": str(e)}), 500
+
+# =========================
+# Buyer: CANCEL ORDER
+# =========================
+
+@app.patch("/api/buyer/orders/<int:orderId>/cancel")
+def cancel_order(orderId):
+    try:
+        conn = get_connection()
+        cursor = conn.cursor()
+
+        cursor.execute("SELECT order_status FROM orders WHERE order_id=?", (orderId,))
+        order = cursor.fetchone()
+        if not order:
+            return jsonify({"error": "Order not found"}), 404
+        if order.order_status == "completed":
+            return jsonify({"error": "Cannot cancel a completed order"}), 400
+
+        cursor.execute("""
+            UPDATE orders
+            SET order_status = 'cancelled'
+            WHERE order_id = ?
+        """, (orderId,))
+        conn.commit()
+        return jsonify({"success": True, "order_id": orderId, "status": "cancelled"})
+    except Exception as e:
+        import traceback
+        print("[CANCEL ORDER ERROR]", str(e))
+        traceback.print_exc()
+        return jsonify({"error": str(e)}), 500
 
 # =========================
 # START SERVER
