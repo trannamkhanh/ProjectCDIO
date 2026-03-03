@@ -712,7 +712,7 @@ def update_product(productId):
         conn = get_connection()
         cursor = conn.cursor()
 
-        # 🔥 FIX expiration date conversion
+        # FIX expiration date conversion
         expiration_date_str = data.get("expiration_date")
 
         expiration_date = None

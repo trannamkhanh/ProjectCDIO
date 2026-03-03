@@ -67,6 +67,7 @@ const SellerDashboard = () => {
     firstMyProduct: myProducts[0]
 
   });
+  // Calculate stats
 
   // Calculate stats
   const stats = useMemo(() => {

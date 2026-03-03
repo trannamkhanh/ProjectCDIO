@@ -264,7 +264,7 @@ const Marketplace = () => {
             </div>
           </div>
         </div>
-
+        {/* Product Grid */}
         {/* Product Grid */}
         {filteredProducts.length === 0 ? (
           <div className="text-center py-16 border-2 border-gray-200 bg-gray-50 rounded-lg">
