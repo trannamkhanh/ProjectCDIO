@@ -3,7 +3,7 @@ import sql from "mssql";
 const config = {
   user: "cdio_user",
   password: "123456",
-  server: "localhost\\SQLEXPRESS",
+  server: "localhost",
   database: "CDIO",
   options: {
     encrypt: false,
